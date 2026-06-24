@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Safety Net - catch-all default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitives & Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Entity validation functions
+    function isValidCase(data) {
+      return data.expediente is string 
+        && data.expediente.size() <= 200
+        && data.userId is string
+        && data.userId.size() <= 128
+        && data.userId == request.auth.uid;
+    }
+
+    function isValidAgendaEvent(data) {
+      return data.exp is string 
+        && data.exp.size() <= 200
+        && data.imputado is string 
+        && data.imputado.size() <= 300
+        && data.userId is string
+        && data.userId.size() <= 128
+        && data.userId == request.auth.uid;
+    }
+
+    // 2. Cases Collection rule definitions
+    match /cases/{caseId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(caseId) && isValidCase(request.resource.data);
+      allow update: if isSignedIn() && isValidId(caseId)
+        && resource.data.userId == request.auth.uid 
+        && isValidCase(request.resource.data)
+        && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && isValidId(caseId) && resource.data.userId == request.auth.uid;
+    }
+
+    // 3. Agenda Events Collection rule definitions
+    match /agendaEvents/{eventId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(eventId) && isValidAgendaEvent(request.resource.data);
+      allow update: if isSignedIn() && isValidId(eventId)
+        && resource.data.userId == request.auth.uid 
+        && isValidAgendaEvent(request.resource.data)
+        && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && isValidId(eventId) && resource.data.userId == request.auth.uid;
+    }
+    // 4. Users Collection rule definitions
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+    }
+  }
+}

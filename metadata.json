@@ -1,0 +1,6 @@
+{
+  "name": "Justicia Rápida HN",
+  "description": "Sistema de gestión jurídica, transcripción de audiencias y análisis penal asistido por IA para Honduras",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

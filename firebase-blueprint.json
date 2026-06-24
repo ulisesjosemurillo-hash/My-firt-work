@@ -1,0 +1,57 @@
+{
+  "entities": {
+    "Case": {
+      "title": "Case",
+      "description": "Un expediente judicial con su información penal correspondiente",
+      "type": "object",
+      "properties": {
+        "expediente": { "type": "string" },
+        "despacho": { "type": "string" },
+        "fecha": { "type": "string" },
+        "horaInicio": { "type": "string" },
+        "juez": { "type": "string" },
+        "secretario": { "type": "string" },
+        "tipoAudiencia": { "type": "string" },
+        "delito": { "type": "string" },
+        "victima": { "type": "string" },
+        "imputados": { "type": "array" },
+        "fiscales": { "type": "array" },
+        "defensores": { "type": "array" },
+        "defensaTipo": { "type": "string" },
+        "acusadorPrivado": { "type": "string" },
+        "resolucionPropuesta": { "type": "string" },
+        "estado": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["expediente", "userId"]
+    },
+    "AgendaEvent": {
+      "title": "AgendaEvent",
+      "description": "Un evento o audiencia programada en la agenda del tribunal o abogado",
+      "type": "object",
+      "properties": {
+        "exp": { "type": "string" },
+        "imputado": { "type": "string" },
+        "type": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "status": { "type": "string" },
+        "motive": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["exp", "imputado", "date", "userId"]
+    }
+  },
+  "firestore": {
+    "/cases/{caseId}": {
+      "schema": "Case",
+      "description": "Colección de todos los expedientes procesados por los usuarios"
+    },
+    "/agendaEvents/{eventId}": {
+      "schema": "AgendaEvent",
+      "description": "Agenda de audiencias de los usuarios judiciales"
+    }
+  }
+}
