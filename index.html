@@ -793,9 +793,16 @@
                     </div>
                     
                     <div class="flex items-center justify-between mb-4">
-                         <div class="flex items-center gap-2">
-                             <div id="record-status" class="text-sm text-gray-400">Listo para iniciar audiencia</div>
-                             <div id="record-timer" class="text-lg font-mono font-bold text-amber-400 hidden">00:00:00</div>
+                         <div class="flex items-center gap-4">
+                             <div class="flex items-center gap-2">
+                                 <div id="record-status" class="text-sm text-gray-400">Listo para iniciar audiencia</div>
+                                 <div id="record-timer" class="text-lg font-mono font-bold text-amber-400 hidden">00:00:00</div>
+                             </div>
+                             <select id="transcription-lang-select" class="input-field py-1 px-2 text-sm max-w-[150px]">
+                                 <option value="es-HN">Español (HN)</option>
+                                 <option value="en-US">Inglés (US)</option>
+                                 <option value="bilingue">Bilingüe (Auto-Detect)</option>
+                             </select>
                          </div>
                          <div class="flex gap-2">
                             <button id="start-record-btn" class="btn-primary px-4 py-2 rounded-md text-sm font-bold">Iniciar Grabación</button>
@@ -1011,7 +1018,7 @@
 
         // Use the native environment key setup
         const apiKey = ""; 
-        const defaultApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+        const defaultApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
 
         async function fetchGeminiWithRetry(url, payload) {
             if (!navigator.onLine) {
@@ -2290,8 +2297,10 @@
                         // Real-time API correction
                         const finalP = pFinal;
                         const tText = transcriptLog.length > 0 ? transcriptLog[currentLogIndex].text : text;
+                        const langSel = document.getElementById('transcription-lang-select');
+                        const langContext = langSel && langSel.value === 'en-US' ? 'en inglés' : (langSel && langSel.value === 'bilingue' ? 'en inglés y/o español (no traduzcas, mantén el idioma original)' : 'en español (Honduras)');
                         fetchGeminiWithRetry('transcription', {
-                            contents: [{ role: "user", parts: [{ text: `Corrige la ortotipografía y términos legales hondureños de manera precisa y estricta en este texto dicho por ${displaySpeaker}. Solo devuelve el texto corregido: "${tText}"` }] }]
+                            contents: [{ role: "user", parts: [{ text: `Corrige únicamente la ortografía, puntuación y formato de términos legales en este texto dicho por ${displaySpeaker} ${langContext}. Conserva EXACTAMENTE las palabras originales, sin cambiar, añadir o eliminar ninguna palabra. No resumas. Devuelve solo el texto corregido: "${tText}"` }] }]
                         }).then(r => {
                             const cText = r.candidates?.[0]?.content?.parts?.[0]?.text;
                             if (cText && finalP && !cText.includes('Error')) {
@@ -2314,8 +2323,10 @@
                         transcriptLog.push({ startTime: timeString, endTime: timeString, speaker: displaySpeaker, text: text });
                         
                         let currentLogIndex = transcriptLog.length - 1;
+                        const langSel = document.getElementById('transcription-lang-select');
+                        const langContext = langSel && langSel.value === 'en-US' ? 'en inglés' : (langSel && langSel.value === 'bilingue' ? 'en inglés y/o español (no traduzcas, mantén el idioma original)' : 'en español (Honduras)');
                         fetchGeminiWithRetry('transcription', {
-                            contents: [{ role: "user", parts: [{ text: `Corrige la ortotipografía y términos legales hondureños de manera precisa y estricta en este texto dicho por ${displaySpeaker}. Solo devuelve el texto corregido: "${text}"` }] }]
+                            contents: [{ role: "user", parts: [{ text: `Corrige únicamente la ortografía, puntuación y formato de términos legales en este texto dicho por ${displaySpeaker} ${langContext}. Conserva EXACTAMENTE las palabras originales, sin cambiar, añadir o eliminar ninguna palabra. No resumas. Devuelve solo el texto corregido: "${text}"` }] }]
                         }).then(r => {
                             const cText = r.candidates?.[0]?.content?.parts?.[0]?.text;
                             if (cText && !cText.includes('Error')) {
@@ -2363,7 +2374,8 @@
                 transcriptionRecognition = new SpeechRecognition();
                 transcriptionRecognition.continuous = true;
                 transcriptionRecognition.interimResults = true;
-                transcriptionRecognition.lang = 'es-HN';
+                const langSelect = document.getElementById('transcription-lang-select');
+                transcriptionRecognition.lang = langSelect && langSelect.value !== 'bilingue' ? langSelect.value : 'es-HN';
                 transcriptionRecognition.onstart = () => { isRecognitionRunning = true; lastTranscriptionErrorType = null; };
                 transcriptionRecognition.onresult = (e) => {
                     let interimTranscript = '';
@@ -2380,7 +2392,7 @@
                         const delayMs = 500;
                         setTimeout(() => {
                             if (state.isRecording && !state.isPaused && !isRecognitionRunning) {
-                                try { lastTranscriptionErrorType = null; transcriptionRecognition.start(); } catch(e) {}
+                                try { lastTranscriptionErrorType = null; const langSel = document.getElementById('transcription-lang-select'); transcriptionRecognition.lang = langSel && langSel.value !== 'bilingue' ? langSel.value : 'es-HN'; transcriptionRecognition.start(); } catch(e) {}
                             }
                         }, delayMs); 
                     }
@@ -2557,15 +2569,17 @@
                            reader.onloadend = async () => {
                                const base64Audio = reader.result.split(',')[1];
                                const joinedLog = transcriptLog.map(l => (l.isSystem ? "[SISTEMA] " : l.speaker + ": ") + l.text).join('\n');
+                               const langSel = document.getElementById('transcription-lang-select');
+                               const langContext = langSel && langSel.value === 'en-US' ? 'en inglés' : (langSel && langSel.value === 'bilingue' ? 'en inglés y/o español (bilingüe)' : 'en español');
                                const payload = {
                                    contents: [{
                                        role: "user",
                                        parts: [
                                            { inlineData: { mimeType: "audio/webm", data: base64Audio } },
-                                           { text: "Verifica y corrige la siguiente transcripción generada usando el audio aportado. Responde SOLO con la transcripción corregida final:\\n\\n" + joinedLog }
+                                           { text: `Verifica y corrige la siguiente transcripción generada usando el audio aportado (${langContext}). Conserva las palabras exactas dictadas, solo corrige ortografía, puntuación y términos. No resumas ni cambies el sentido. Responde SOLO con la transcripción corregida final:\n\n` + joinedLog }
                                        ]
                                    }],
-                                   systemInstruction: { parts: [{ text: "Eres liquidador de actas. Verifica los textos contra el audio de forma estricta." }] }
+                                   systemInstruction: { parts: [{ text: "Eres un transcriptor judicial muy estricto. Tu tarea es revisar el texto contra el audio y corregir errores de ortografía o transcripción de voz a texto. Es crítico que mantengas cada palabra original que se diga sin omitir, resumir ni parafrasear." }] }
                                };
                                try {
                                    const result = await fetchGeminiWithRetry('audio-review', payload);
@@ -2586,7 +2600,7 @@
                     videoRecorder.start(); audioRecorder.start(); state.isRecording = true; state.isPaused = false; recordSeconds = 0;
                     document.getElementById('start-record-btn').classList.add('hidden'); document.getElementById('pause-record-btn').classList.remove('hidden'); document.getElementById('stop-record-btn').classList.remove('hidden');
                     document.getElementById('record-status').textContent = 'Grabando...'; document.getElementById('record-status').classList.add('text-red-500', 'animate-pulse');
-                    startTimer(); if(transcriptionRecognition) { try { transcriptionRecognition.start(); } catch(e) {} }
+                    startTimer(); if(transcriptionRecognition) { try { const langSel = document.getElementById('transcription-lang-select'); transcriptionRecognition.lang = langSel && langSel.value !== 'bilingue' ? langSel.value : 'es-HN'; transcriptionRecognition.start(); } catch(e) {} }
                     if (window.AIVision) window.AIVision.startDetection(document.getElementById('video-preview'), document.getElementById('overlay-canvas'));
                 } catch (err) { 
                     document.getElementById('record-status').textContent = 'Error de acceso a dispositivos.'; 
@@ -2601,7 +2615,7 @@
                     state.isPaused = false; if(videoRecorder?.state === 'paused') videoRecorder.resume(); if(audioRecorder?.state === 'paused') audioRecorder.resume();
                     btn.textContent = 'Pausar'; btn.classList.replace('btn-primary', 'btn-accent');
                     status.textContent = 'Grabando...'; status.classList.replace('text-amber-500', 'text-red-500'); status.classList.add('animate-pulse');
-                    startTimer(); if(transcriptionRecognition && !isRecognitionRunning) { try { transcriptionRecognition.start(); } catch(e){} }
+                    startTimer(); if(transcriptionRecognition && !isRecognitionRunning) { try { const langSel = document.getElementById('transcription-lang-select'); transcriptionRecognition.lang = langSel && langSel.value !== 'bilingue' ? langSel.value : 'es-HN'; transcriptionRecognition.start(); } catch(e){} }
                 } else {
                     state.isPaused = true; if(videoRecorder?.state === 'recording') videoRecorder.pause(); if(audioRecorder?.state === 'recording') audioRecorder.pause();
                     btn.textContent = 'Reanudar'; btn.classList.replace('btn-accent', 'btn-primary');

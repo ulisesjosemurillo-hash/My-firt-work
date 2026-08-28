@@ -69,10 +69,10 @@ app.post("/api/gemini/bridge", async (req, res) => {
     }
 
     if (action === "proposal") {
-      model = "gemini-3.1-pro-preview";
+      model = "gemini-3.5-flash";
       sdkConfig.thinkingConfig = { thinkingLevel: "HIGH" };
     } else if (action === "ocr") {
-      model = "gemini-3.1-pro-preview";
+      model = "gemini-3.5-flash";
     } else if (action === "transcription" || action === "audio-review") {
       model = "gemini-3.5-flash";
     }
@@ -241,7 +241,7 @@ Devuelve este JSON de forma rigurosa. Si algún campo no se puede divisar o leer
     };
 
     const payload = {
-      model: "gemini-3.1-pro-preview",
+      model: "gemini-3.5-flash",
       contents: { parts: [imagePart, textPart] },
       config: {
         responseMimeType: "application/json",
@@ -319,7 +319,7 @@ app.post("/api/gemini/generate-proposal", async (req, res) => {
     }
 
     const payload = {
-      model: "gemini-3.1-pro-preview",
+      model: "gemini-3.5-flash",
       contents: [
         {
           role: "user",
@@ -328,7 +328,6 @@ app.post("/api/gemini/generate-proposal", async (req, res) => {
       ],
       config: {
         systemInstruction: systemPrompt || "Eres un Juez del poder judicial de Honduras de Letras Penal.",
-        thinkingConfig: { thinkingLevel: "HIGH" }
       },
     };
 
